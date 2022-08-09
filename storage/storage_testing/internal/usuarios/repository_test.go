@@ -1,13 +1,11 @@
 package usuarios
 
 import (
-	"log"
 	"regexp"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/anesquivel/wave-5-backpack/storage/storage_testing/db"
 	"github.com/anesquivel/wave-5-backpack/storage/storage_testing/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -62,19 +60,6 @@ func TestGetOne(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestGetAll(t *testing.T) {
-	db.Init()
-	repo := NewRepository(db.StorageDB)
-	totalOfUsers := 4
-	userResult, err := repo.GetAll()
-
-	if err != nil {
-		log.Println("----- ERROR- TEST:", err.Error())
-	}
-
-	assert.Equal(t, totalOfUsers, len(userResult))
-}
-
 func TestUpdateLASTAGE(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -98,4 +83,23 @@ func TestUpdateLASTAGE(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 	defer cancel()
 
+}
+
+func TestDelete(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	userId := 1
+
+	mock.ExpectPrepare(regexp.QuoteMeta("DELETE FROM users WHERE id = ?"))
+	mock.ExpectExec("DELETE FROM users").WithArgs(userId).WillReturnResult(sqlmock.NewResult(1, 1))
+
+	repo := NewRepository(db)
+
+	err = repo.Delete(userId)
+
+	assert.Nil(t, err)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
