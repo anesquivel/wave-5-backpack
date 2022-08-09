@@ -80,11 +80,12 @@ func TestUpdateLASTAGE(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 
-	mock.ExpectPrepare(regexp.QuoteMeta("INSERT INTO users(names, last_name, email, age, height, is_active, date_created) VALUES( ?, ?, ?, ?, ?, ?, ? )"))
-	mock.ExpectExec("INSERT INTO users").WillReturnResult(sqlmock.NewResult(1, 1))
+	id, lastName, age := 1, "Irwin", 26
+
+	mock.ExpectPrepare(regexp.QuoteMeta("UPDATE users SET last_name = ?, age = ? WHERE id = ?"))
+	mock.ExpectExec("UPDATE users").WithArgs(lastName, age, id).WillReturnResult(sqlmock.NewResult(1, 1))
 
 	repo := NewRepository(db)
-	id, lastName, age := 1, "Irwin", 26
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
