@@ -1,12 +1,16 @@
 package usuarios
 
 import (
+	"database/sql"
 	"regexp"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/DATA-DOG/go-txdb"
 	"github.com/anesquivel/wave-5-backpack/storage/storage_testing/internal/domain"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -102,4 +106,34 @@ func TestDelete(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func init() {
+	txdb.Register("txdb", "mysql", "root:@/storage")
+}
+
+func InitDb() (*sql.DB, error) {
+	db, err := sql.Open("txdb", uuid.New().String())
+	if err == nil {
+		return db, db.Ping()
+	}
+	return db, err
+}
+
+func Test_SqlRepo_Store(t *testing.T) {
+	db, err := InitDb()
+	assert.NoError(t, err)
+
+	repo := NewRepository(db)
+	userId := uuid.New()
+	user := domain.Usuario{
+		Id: int(userId.ID()),
+	}
+
+	res, err := repo.Store(user)
+	assert.Error(t, err)
+
+	res, err = repo.GetOne(user.Id)
+	assert.Zero(t, res)
+
 }
