@@ -14,10 +14,10 @@ const (
 	ERROR_READING        = "Hubo un error al leer los datos de la BD."
 	ERR_WRITING          = "Hubo un error al guardar los datos en la BD."
 	ERR_UPDATING_USER    = ".. al no encontrar el usuario."
-	QUERY_STORE          = "INSERT INTO users(names, last_name, email, age, height, is_active, date_created) VALUES(?,?,?,?,?,?,?)"
+	QUERY_STORE          = "INSERT INTO users(names, last_name, email, age, height, is_active, date_created) VALUES( ?, ?, ?, ?, ?, ?, ? )"
 	QUERY_UPDATE         = "UPDATE users SET names = ?, last_name = ?, email = ?, age = ?, height = ? WHERE id = ?"
 	QUERY_UPDATE_LASTAGE = "UPDATE users SET last_name = ?, age = ? WHERE id = ?"
-	QUERY_GET_ONE        = "SELECT id, names, last_name, email, age, height, is_active FROM users where id = ?"
+	QUERY_GET_ONE        = "SELECT id, names, last_name, email, age FROM users where id = ?"
 	QUERY_GET_BYNAME     = "SELECT id, names, last_name, email FROM users WHERE names = ?"
 	QUERY_GET_ALL        = "SELECT id, names, last_name, email, age,height, is_active FROM users"
 	QUERY_DELETE         = "DELETE FROM users WHERE id = ?"
@@ -45,7 +45,7 @@ func (r *repository) Store(user domain.Usuario) (domain.Usuario, error) {
 	stmt, err := r.db.Prepare(QUERY_STORE)
 
 	if err != nil {
-		log.Fatal("err:", err.Error())
+		log.Fatal("-- err: ", err.Error())
 	}
 
 	defer stmt.Close()
@@ -96,18 +96,19 @@ func (r *repository) GetOne(id int) (domain.Usuario, error) {
 	rows, err := r.db.Query(QUERY_GET_ONE, id)
 
 	if err != nil {
-		return domain.Usuario{}, errors.New(ERROR_READING)
+		return domain.Usuario{}, errors.New(err.Error())
 	}
 
 	for rows.Next() {
-		if err := rows.Scan(&user.Id,
+		err := rows.Scan(
+			&user.Id,
 			&user.Names,
 			&user.LastName,
 			&user.Email,
-			&user.Age,
-			&user.Estatura,
-			&user.IsActivo); err != nil {
-			return domain.Usuario{}, errors.New("No se encontró el usuario.")
+			&user.Age)
+
+		if err != nil {
+			return domain.Usuario{}, errors.New(err.Error())
 		}
 	}
 	return user, nil

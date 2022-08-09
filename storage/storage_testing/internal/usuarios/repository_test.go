@@ -2,9 +2,11 @@ package usuarios
 
 import (
 	"log"
+	"regexp"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/anesquivel/wave-5-backpack/storage/storage_testing/db"
 	"github.com/anesquivel/wave-5-backpack/storage/storage_testing/internal/domain"
 	"github.com/stretchr/testify/assert"
@@ -12,39 +14,52 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	db.Init()
-	repo := NewRepository(db.StorageDB)
-	newUser := domain.Usuario{
-		Names:       "Ashton",
-		LastName:    "Brooke",
-		Email:       "ash2@gmail.com",
-		Estatura:    1.80,
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectPrepare(regexp.QuoteMeta("INSERT INTO users(names, last_name, email, age, height, is_active, date_created) VALUES( ?, ?, ?, ?, ?, ?, ? )"))
+	mock.ExpectExec("INSERT INTO users").WillReturnResult(sqlmock.NewResult(1, 1))
+	userId := 1
+
+	repo := NewRepository(db)
+
+	nwUser := domain.Usuario{
+		Id:          int(userId),
+		Names:       "Andrea",
+		LastName:    "Esquivel",
+		Email:       "prueba@gmail.co",
+		Estatura:    1.52,
 		IsActivo:    true,
-		DateCreated: "2022-08-08",
-		Age:         28,
+		DateCreated: "2022-08-09",
 	}
 
-	userResult, err := repo.Store(newUser)
-
-	if err != nil {
-		log.Println("----- ERROR- TEST:", err.Error())
-	}
-
-	assert.Equal(t, 1, userResult.Id)
-	assert.Equal(t, newUser.Names, userResult.Names)
+	u, err := repo.Store(nwUser)
+	assert.NoError(t, err)
+	assert.NotZero(t, u)
+	assert.Equal(t, nwUser.Id, u.Id)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestByName(t *testing.T) {
-	db.Init()
-	repo := NewRepository(db.StorageDB)
-	name := "Ashton"
-	userResult, err := repo.GetByName(name)
+func TestGetOne(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
 
-	if err != nil {
-		log.Println("----- ERROR- TEST:", err.Error())
+	userId := 1
+	repo := NewRepository(db)
+
+	var columns = []string{
+		"id", "names", "last_name", "email", "age",
 	}
+	rows := sqlmock.NewRows(columns)
+	rows.AddRow(userId, "", "", "", 0)
+	mock.ExpectQuery("SELECT id, names, last_name, email, age FROM users where id = ?").WithArgs(userId).WillReturnRows(rows)
 
-	assert.Equal(t, 1, userResult.Id)
+	res, err := repo.GetOne(userId)
+	assert.NoError(t, err)
+	assert.Equal(t, userId, res.Id)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestGetAll(t *testing.T) {
@@ -61,18 +76,25 @@ func TestGetAll(t *testing.T) {
 }
 
 func TestUpdateLASTAGE(t *testing.T) {
-	db.Init()
-	repo := NewRepository(db.StorageDB)
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectPrepare(regexp.QuoteMeta("INSERT INTO users(names, last_name, email, age, height, is_active, date_created) VALUES( ?, ?, ?, ?, ?, ?, ? )"))
+	mock.ExpectExec("INSERT INTO users").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	repo := NewRepository(db)
 	id, lastName, age := 1, "Irwin", 26
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	u, err := repo.UpdateLastNameAndAge(ctx, id, age, lastName)
+	assert.NoError(t, err)
+	assert.NotZero(t, u)
+	assert.Equal(t, id, u.Id)
+	assert.Equal(t, age, u.Age)
+	assert.Equal(t, lastName, u.LastName)
+	assert.NoError(t, mock.ExpectationsWereMet())
 	defer cancel()
-	userResult, err := repo.UpdateLastNameAndAge(ctx, id, age, lastName)
-
-	if err != nil {
-		log.Println("----- ERROR- TEST:", err.Error())
-	}
-
-	assert.Equal(t, age, userResult.Age)
-	assert.Equal(t, lastName, userResult.LastName)
 
 }
